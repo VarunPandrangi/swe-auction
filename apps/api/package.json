@@ -10,11 +10,14 @@
     "dev:socket": "tsx watch src/socket/server.ts",
     "build": "tsc && tsc-alias -f",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint \"src/**/*.ts\" \"prisma/**/*.ts\"",
-    "db:migrate:dev": "prisma migrate dev",
-    "db:migrate:deploy": "prisma migrate deploy",
-    "db:reset": "prisma migrate reset",
-    "db:seed": "tsx prisma/seed.ts"
+    "lint": "eslint \"src/**/*.ts\" \"../../prisma/seed.ts\"",
+    "db:migrate:dev": "prisma migrate dev --schema=../../prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema=../../prisma/schema.prisma",
+    "db:reset": "prisma migrate reset --schema=../../prisma/schema.prisma",
+    "db:seed": "tsx ../../prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx ../../prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.12.1",

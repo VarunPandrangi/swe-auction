@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "module": "CommonJS",
+    "moduleResolution": "Node"
+  },
+  "include": ["seed.ts"]
+}

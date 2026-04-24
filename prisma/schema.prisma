@@ -7,4 +7,137 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Models will be added in Sprint 1
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  STUDENT
+  UNIVERSITY_ADMIN
+  PLATFORM_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  UNVERIFIED
+  SUSPENDED
+  PENDING_DELETION
+}
+
+// ---------------------------------------------------------------------------
+// Models — Sprint 1 (plan_v4.md Section 9, Sprint 1)
+// ---------------------------------------------------------------------------
+
+/// Core user record.
+/// tenant_id is nullable: NULL means the user is unaffiliated (no university).
+/// Passwords are stored as bcryptjs hashes (cost factor 12) — never plaintext.
+/// deleted_at / pending_deletion_at implement the 30-day soft-delete grace period
+/// described in plan_v4.md Section 7.10.
+model User {
+  id                String     @id @default(uuid())
+  email             String     @unique
+  emailVerified     Boolean    @default(false) @map("email_verified")
+  passwordHash      String     @map("password_hash")
+  displayName       String     @map("display_name")
+  profileImageUrl   String?    @map("profile_image_url")
+  role              UserRole   @default(STUDENT)
+  tenantId          String?    @map("tenant_id") // NULL = unaffiliated student
+  status            UserStatus @default(ACTIVE)
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+  deletedAt         DateTime?  @map("deleted_at") // soft-delete (section 7.10)
+  pendingDeletionAt DateTime?  @map("pending_deletion_at") // when set → 30-day grace
+
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id])
+  sessions Session[]
+
+  // auctions, bids, reviews, watchlist, etc. will be added in later sprints
+
+  @@map("users")
+}
+
+/// A university (tenant) registered on the platform.
+/// email_domain is the authoritative domain used for auto-affiliation on registration
+/// (plan_v4.md Section 8.6).
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  emailDomain String   @unique @map("email_domain") // e.g. "university-a.edu"
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users User[]
+
+  @@map("tenants")
+}
+
+/// Persistent login session backed by a refresh token.
+/// We store only the SHA-256 hash of the refresh token — NEVER the plaintext.
+/// This implements risk mitigation R08 from plan_v4.md Section 11 (session expiry).
+model Session {
+  id               String    @id @default(uuid())
+  userId           String    @map("user_id")
+  refreshTokenHash String    @unique @map("refresh_token_hash") // SHA-256 of the token
+  userAgent        String?   @map("user_agent")
+  ipAddress        String?   @map("ip_address")
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// One-time token sent to a user's email to verify their address (US02).
+/// Only the SHA-256 hash of the token is stored — never the plaintext.
+/// consumed_at is set when the token is used (idempotency — cannot be used twice).
+model EmailVerificationToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash") // SHA-256 hash
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+/// One-time token for password reset (US06).
+/// Same hash-only policy as EmailVerificationToken.
+model PasswordResetToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash") // SHA-256 hash
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+/// Append-only audit log.
+/// Written within the same PostgreSQL transaction as the triggering event
+/// so the log is always consistent (plan_v4.md Section 8.3 MOD-AUDIT, Section 9 Sprint 1).
+/// actor_user_id is nullable to support system-initiated events (e.g. Bull job closing an auction).
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorUserId  String?  @map("actor_user_id") // null for system actions
+  action       String // e.g. 'USER_REGISTERED', 'USER_LOGGED_IN', 'TENANT_CREATED'
+  entityType   String   @map("entity_type") // e.g. 'user', 'tenant', 'session'
+  entityId     String   @map("entity_id")
+  metadataJson Json?    @map("metadata_json") // free-form context; no sensitive fields
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([action])
+  @@map("audit_logs")
+}
