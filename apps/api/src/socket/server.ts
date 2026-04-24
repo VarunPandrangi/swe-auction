@@ -1,11 +1,19 @@
-import { Server as HttpServer } from 'http';
+import { createServer } from 'http';
 
 import { env } from '@shared/env';
 import { createAdapter } from '@socket.io/redis-adapter';
+import pino from 'pino';
 import { createClient } from 'redis';
 import { Server } from 'socket.io';
 
-export async function setupSocketServer(httpServer: HttpServer) {
+const logger = pino({
+  transport: {
+    target: 'pino-pretty',
+  },
+});
+
+async function main() {
+  const httpServer = createServer();
   const io = new Server(httpServer, {
     cors: {
       origin: env.FRONTEND_ORIGIN,
@@ -20,10 +28,15 @@ export async function setupSocketServer(httpServer: HttpServer) {
 
   io.adapter(createAdapter(pubClient, subClient));
 
-  io.on('connection', (socket) => {
-    console.log('socket server listening', socket.id);
-  });
+  io.on('connection', () => undefined);
 
-  console.log('Socket.IO server initialized');
-  return io;
+  const port = 4001;
+  httpServer.listen(port, () => {
+    logger.info({ port }, 'socket server listening');
+  });
 }
+
+main().catch((error) => {
+  logger.error(error);
+  process.exit(1);
+});

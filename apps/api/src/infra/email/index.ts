@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 
 export async function sendEmail(to: string, subject: string, html: string) {
   if (env.NODE_ENV === 'development' && env.SMTP_HOST === 'dev-console') {
-    console.log(`📧 Email to: ${to}\nSubject: ${subject}\nContent: ${html}`);
+    process.stdout.write(`Email to: ${to}\nSubject: ${subject}\nContent: ${html}\n`);
     return;
   }
 
