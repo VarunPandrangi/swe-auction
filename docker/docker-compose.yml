@@ -1,8 +1,12 @@
-version: '3.8'
+networks:
+  auction-network:
+    name: auction-network
 
 services:
   postgres:
     image: postgres:16
+    env_file:
+      - ../.env
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
@@ -16,9 +20,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - auction-network
 
   redis:
     image: redis:7
+    env_file:
+      - ../.env
     ports:
       - "6379:6379"
     volumes:
@@ -28,11 +36,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - auction-network
 
   express-api:
     build:
       context: ..
       dockerfile: docker/api.Dockerfile
+    env_file:
+      - ../.env
     environment:
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-auction_db}?schema=public
       REDIS_URL: redis://redis:6379
@@ -43,11 +55,16 @@ services:
         condition: service_healthy
     ports:
       - "4000:4000"
+    networks:
+      - auction-network
 
   socket-server:
     build:
       context: ..
       dockerfile: docker/api.Dockerfile # Same for now as per Sprint 0 instructions
+    command: ["pnpm", "start:socket"]
+    env_file:
+      - ../.env
     environment:
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-auction_db}?schema=public
       REDIS_URL: redis://redis:6379
@@ -58,11 +75,15 @@ services:
         condition: service_healthy
     ports:
       - "4001:4001"
+    networks:
+      - auction-network
 
   bull-worker:
     build:
       context: ..
       dockerfile: docker/worker.Dockerfile
+    env_file:
+      - ../.env
     environment:
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-auction_db}?schema=public
       REDIS_URL: redis://redis:6379
@@ -71,15 +92,21 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - auction-network
 
   nextjs:
     build:
       context: ..
       dockerfile: docker/web.Dockerfile
+    env_file:
+      - ../.env
     ports:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:4000
+    networks:
+      - auction-network
 
   nginx:
     image: nginx:latest
@@ -90,6 +117,8 @@ services:
     depends_on:
       - nextjs
       - express-api
+    networks:
+      - auction-network
 
 volumes:
   pgdata:

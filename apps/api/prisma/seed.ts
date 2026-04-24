@@ -1,17 +1,9 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
 async function main() {
-  console.log('Seed placeholder: Exiting 0');
+  process.stdout.write('Seed placeholder: Exiting 0\n');
   process.exit(0);
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+void main().catch((e) => {
+  process.stderr.write(`${String(e)}\n`);
+  process.exit(1);
+});

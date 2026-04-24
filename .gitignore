@@ -4,6 +4,14 @@ dist/
 .next/
 out/
 build/
+.turbo/
+.pnpm-store/
+
+# TypeScript build metadata
+*.tsbuildinfo
+
+# Package manager lockfiles
+package-lock.json
 
 # Environment variables
 .env

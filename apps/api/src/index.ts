@@ -1,9 +1,7 @@
-import { createServer } from 'http';
-
+import { env } from '@shared/env';
+import cors from 'cors';
 import express from 'express';
 import pino from 'pino';
-
-import { setupSocketServer } from './socket/server';
 
 const logger = pino({
   transport: {
@@ -12,20 +10,23 @@ const logger = pino({
 });
 
 const app = express();
-const httpServer = createServer(app);
 
 app.use(express.json());
+app.use(
+  cors({
+    origin: env.FRONTEND_ORIGIN,
+    credentials: true,
+  }),
+);
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
 async function main() {
-  await setupSocketServer(httpServer);
-
   const port = 4000;
-  httpServer.listen(port, () => {
-    logger.info(`API server listening on port ${port}`);
+  app.listen(port, () => {
+    logger.info({ port }, 'api server listening');
   });
 }
 
