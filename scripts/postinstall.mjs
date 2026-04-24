@@ -1,8 +1,9 @@
 import { spawnSync } from 'child_process';
 
 const skipInstall = process.env['SKIP_WORKSPACE_POSTINSTALL'] === '1';
+const isCi = process.env['CI'] === 'true';
 
-if (skipInstall) {
+if (skipInstall || isCi) {
   process.exit(0);
 }
 
