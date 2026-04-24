@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -25,9 +27,16 @@ try {
     throw new Error('JWT_PRIVATE_KEY and JWT_PUBLIC_KEY are required in production');
   }
   if (parsed.NODE_ENV === 'development' && (!parsed.JWT_PRIVATE_KEY || !parsed.JWT_PUBLIC_KEY)) {
-    console.warn('⚠️ WARNING: JWT keys are missing. Using ephemeral keys for development.');
-    // In a real scenario, we'd generate keys here, but for now we'll just allow them to be undefined
-    // and the auth service will handle the generation if needed.
+    console.warn('⚠️ WARNING: JWT keys are missing. Generating ephemeral keys for development.');
+
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: 'pkcs1', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs1', format: 'pem' },
+    });
+
+    parsed.JWT_PRIVATE_KEY = privateKey;
+    parsed.JWT_PUBLIC_KEY = publicKey;
   }
   env = parsed as Env;
 } catch (error) {

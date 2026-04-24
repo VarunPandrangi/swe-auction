@@ -25,21 +25,25 @@ APPLICATION LAYER: Use-case services (AuctionService, etc.)
 DOMAIN LAYER: AuctionStateMachine, BidValidationStrategy
 INFRASTRUCTURE LAYER: Prisma, Redis, Bull, Nodemailer
 
+## Technology Decisions
+
+- **Bull 4.x**: Sticking with Bull 4.x instead of BullMQ as specified in `plan_v4.md`.
+
 ## Module Map
 
-| Module      | Owns                     |
-| ----------- | ------------------------ |
-| MOD-AUTH    | Registration, login, JWT |
-| MOD-USER    | User profiles, roles     |
-| MOD-TENANT  | University onboarding    |
-| MOD-AUCTION | Auction CRUD, lifecycle  |
-| MOD-BID     | Bid pipeline, validation |
-| MOD-DUTCH   | Dutch price timer        |
-| MOD-NOTIFY  | Notifications            |
-| MOD-SEARCH  | Full-text search         |
-| MOD-REVIEW  | Post-auction reviews     |
-| MOD-AUDIT   | Append-only logging      |
-| MOD-ADMIN   | Admin dashboards         |
+| Module      | Owns                                                                                 | Depends On                                  |
+| ----------- | ------------------------------------------------------------------------------------ | ------------------------------------------- |
+| MOD-AUTH    | Registration, login, JWT, email verification, password reset                         | MOD-USER (create user record), MOD-EMAIL    |
+| MOD-USER    | User profiles, roles, public lookup                                                  | —                                           |
+| MOD-TENANT  | University onboarding, domain matching, tenant-scoped queries                        | MOD-USER                                    |
+| MOD-AUCTION | Auction CRUD, lifecycle state machine, scheduling, visibility, invites, access codes | MOD-USER, MOD-TENANT, MOD-NOTIFY, MOD-AUDIT |
+| MOD-BID     | Bid submission pipeline, validation, ranking, proxy bidding, anti-sniping            | MOD-AUCTION, MOD-NOTIFY, MOD-AUDIT          |
+| MOD-DUTCH   | Dutch price timer, decrement scheduling, floor detection                             | MOD-AUCTION, MOD-NOTIFY, MOD-AUDIT          |
+| MOD-NOTIFY  | Notification creation, persistence, real-time push, email fallback                   | MOD-USER, MOD-EMAIL                         |
+| MOD-SEARCH  | Full-text search, filters, sort                                                      | MOD-AUCTION (read-only)                     |
+| MOD-REVIEW  | Post-auction reviews, rating aggregation, review moderation                          | MOD-AUCTION, MOD-USER                       |
+| MOD-AUDIT   | Append-only logging within the same DB transaction                                   | — (depended on by all)                      |
+| MOD-ADMIN   | Admin dashboards, moderation actions, reports                                        | All modules (read + controlled writes)      |
 
 ## Documentation
 
